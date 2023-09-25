@@ -5,6 +5,8 @@ from discord import app_commands
 from discord.ext import commands
 import responses
 import bot_responses
+import bot_reminder
+import datetime
 
 load_dotenv()
 
@@ -34,10 +36,26 @@ def run_bot():
     async def say(interaction: discord.Interaction, thing_to_say: str):
         await interaction.response.send_message(f"{interaction.user.name} said: {thing_to_say}")
 
-    @bot.tree.command(name="new_reminder")
-    @app_commands.describe(reminder="What should I remind you about?", reminder_time="When should I remind you?", nag_interval="How often should I remind you?")
-    async def new_reminder(interaction: discord.Interaction, reminder: str, reminder_time: str, nag_interval: str):
-        await interaction.response.send_message(f"Okay, I'll remind you about {reminder} at {reminder_time} every {nag_interval}.")
+    @bot.tree.command(name="new-daily-reminder")
+    @app_commands.describe(reminder="What should I remind you about?", reminder_time="When should I remind you (24 hour time)? e.g. 09:30:00", nag_interval="How often should I nag you until you respond? e.g. 00:15:00")
+    async def new_reminder(interaction: discord.Interaction, reminder_title: str, reminder_time: str, nag_interval: str):
+        try:
+            reminder_datetime = datetime.datetime.strptime(reminder_time, "%H:%M:%S")
+            print(reminder_time)
+            nag_interval_datetime = datetime.datetime.strptime(nag_interval, "%H:%M:%S")
+            print(nag_interval)
+            if nag_interval_datetime.time() < datetime.time(0, 0, 10):
+                raise Exception("Nag interval must be at least 10 seconds long! Jeez Louise!")
+            
+            # actually make the reminder
+            reminder = bot_reminder.Reminder(interaction, reminder_title, reminder_datetime, nag_interval_datetime)
+
+
+            await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%H:%M:%S %p')} every {nag_interval_datetime.strftime('%X ')}.")
+        except Exception as e:
+            print(e)
+            await interaction.response.send_message(f"{e}. Please try again.")
+            return
 
     
 
