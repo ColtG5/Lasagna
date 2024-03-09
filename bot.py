@@ -10,7 +10,6 @@ import datetime
 
 load_dotenv()
 
-
 def run_bot():
     # intents = discord.Intents.default()
     # intents.message_content = True
@@ -36,8 +35,8 @@ def run_bot():
     async def say(interaction: discord.Interaction, thing_to_say: str):
         await interaction.response.send_message(f"{interaction.user.name} said: {thing_to_say}")
 
-    @bot.tree.command(name="new-daily-reminder")
-    @app_commands.describe(reminder="What should I remind you about?", reminder_time="When should I remind you (24 hour time)? e.g. 09:30:00", nag_interval="How often should I nag you until you respond? e.g. 00:15:00")
+    @bot.tree.command(name="new-daily-reminder", description="Create a new daily reminder!")
+    @app_commands.describe(reminder_title="What should I remind you about?", reminder_time="When should I remind you (24 hour time)? e.g. 09:30:00", nag_interval="How often should I nag you until you respond? e.g. 00:15:00")
     async def new_reminder(interaction: discord.Interaction, reminder_title: str, reminder_time: str, nag_interval: str):
         try:
             reminder_datetime = datetime.datetime.strptime(reminder_time, "%H:%M:%S")
@@ -48,7 +47,7 @@ def run_bot():
                 raise Exception("Nag interval must be at least 10 seconds long! Jeez Louise!")
             
             # actually make the reminder
-            reminder = bot_reminder.Reminder(interaction, reminder_title, reminder_datetime, nag_interval_datetime)
+            reminder = bot_reminder.Reminder(interaction.user, reminder_title, reminder_datetime, nag_interval_datetime)
 
 
             await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%H:%M:%S %p')} every {nag_interval_datetime.strftime('%X ')}.")
