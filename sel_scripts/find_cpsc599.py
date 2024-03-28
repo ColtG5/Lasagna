@@ -11,7 +11,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-
 class FindCpsc599:
     def setup_method(self):
         self.driver = webdriver.Chrome()
@@ -27,11 +26,12 @@ class FindCpsc599:
         if len(wh_now) > len(wh_then):
             return set(wh_now).difference(set(wh_then)).pop()
 
-    def find_cpsc599(self) -> bool:
+    def does_cpsc599_exist(self) -> bool:
         load_dotenv()
         self.driver.get(
             "https://cas.ucalgary.ca/cas/login?service=https://portal.my.ucalgary.ca/psp/paprd/?cmd=start&ca.ucalgary.authent.ucid=true"
         )
+        time.sleep(2)
         self.driver.set_window_size(1000, 1040)
         self.driver.find_element(By.ID, "eidtext").send_keys(os.getenv("UCAL_USERNAME"))
         self.driver.find_element(By.ID, "passwordtext").send_keys(
@@ -80,9 +80,9 @@ class FindCpsc599:
         # print(message_area)
 
         if message_area.text == '"CPSC 599" is only available in the term 2024 Winter.':
-            print("FOUND THE ERROR MESSAGE")
-            return True
-        else:
-            print("no error message")
+            print("FOUND THE ERROR MESSAGE, course does not exist")
             return False
+        else:
+            print("no error message, course exists!!!!!!!!")
+            return True
 
