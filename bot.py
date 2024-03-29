@@ -4,7 +4,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import responses
-import bot_responses
 import bot_reminder
 import datetime
 
@@ -50,7 +49,11 @@ def run_bot():
             reminder = bot_reminder.Reminder(interaction.user, reminder_title, reminder_datetime, nag_interval_datetime)
 
 
-            await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%H:%M:%S %p')} every {nag_interval_datetime.strftime('%X ')}.")
+            # await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%H:%M:%S %p')}.") - 24hr time
+            await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%I:%M %p')} every day.")
+
+
+
         except Exception as e:
             print(e)
             await interaction.response.send_message(f"{e}. Please try again.")
