@@ -8,10 +8,8 @@ import bot_reminder
 import datetime
 import sel_scripts.sel_main as sel_main
 
-load_dotenv()
-
-
 def run_bot():
+    load_dotenv()
     # intents = discord.Intents.default()
     # intents.message_content = True
     bot = commands.Bot(command_prefix="!L ", intents=discord.Intents.all())
@@ -72,11 +70,10 @@ def run_bot():
                 nag_interval_datetime,
             )
 
-
             # await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%H:%M:%S %p')}.") - 24hr time
-            await interaction.response.send_message(f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%I:%M %p')} every day.")
-
-
+            await interaction.response.send_message(
+                f"Okay, I'll remind you about `{reminder_title}` at {reminder_datetime.strftime('%I:%M %p')} every day."
+            )
 
         except Exception as e:
             print(e)
