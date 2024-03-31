@@ -1,12 +1,7 @@
-[2024-03-31 14:55:58] Created new course: CPSC 599.
-[2024-03-31 14:55:58] Added user coltg5 to course CPSC 599.
-[2024-03-31 15:09:53] Created new course: CPSC 599.
-[2024-03-31 15:09:53] Added user coltg5 to course CPSC 599.
-[2024-03-31 15:10:48] Created new course: CPSC 359.
-[2024-03-31 15:10:48] Added user coltg5 to course CPSC 359.
-[2024-03-31 15:11:54] Deleted course: CPSC 359.
-[2024-03-31 15:15:33] Created new course: CPSC 599.
-[2024-03-31 15:15:33] Added user coltg5 to course CPSC 599.
-[2024-03-31 15:15:38] Created new course: CPSC 359.
-[2024-03-31 15:15:38] Added user coltg5 to course CPSC 359.
-[2024-03-31 15:16:48] Deleted course: CPSC 359.
+[2024-03-31 15:33:38] Created new course: CPSC 359.
+[2024-03-31 15:33:38] Added user coltg5 to course CPSC 359.
+[2024-03-31 15:36:57] Created new course: CPSC 359.
+[2024-03-31 15:36:57] Added user coltg5 to course CPSC 359.
+[2024-03-31 15:37:29] Notified [<User id=480182681296961548 name='coltg5' global_name='ColtG5' bot=False>] for course CPSC 359 (and deleted that course).
+[2024-03-31 15:45:36] Created new course: CPSC 599.
+[2024-03-31 15:45:36] Added user coltg5 to course CPSC 599.

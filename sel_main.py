@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from sel_scripts.check_course_existence import FindCourse
 from data.courses_storage import CoursesStorage
 
-
 async def async_check_course_existence(course_name):
     loop = asyncio.get_event_loop()
     course_checker = FindCourse(course=course_name)
@@ -26,18 +25,7 @@ async def main_loop(bot: discord.Client):
             course_exists = await async_check_course_existence(course_name)
 
             if course_exists:
-                # need to notify all users that signed up to hear when that course now exists
-                notification_tasks = []
-                all_users_for_course = CoursesStorage.get_course_users(course_name)
-                for user in all_users_for_course:  
-                    task = asyncio.create_task(user.send(f"**Hey {user.name}, course {course_name} now exists in the schedule builder!**"))
-                    notification_tasks.append(task)
-
-                # Wait for all notifications to be sent out
-                if notification_tasks:
-                    await asyncio.gather(*notification_tasks)
-
-                CoursesStorage.delete_course(course_name) # should be able to delete the course now that it exists
+                await CoursesStorage.notify_users(course_name)
                 print(f"Done notifying users for course {course_name}")
             else:
                 print(f"Course {course_name} does not exist yet")

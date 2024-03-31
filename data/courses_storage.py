@@ -1,14 +1,11 @@
 import datetime
+import asyncio
 
 class CoursesStorage:
     _courses_for_existence = {}
 
     @classmethod
     def _log_action(cls, message):
-        """Helper method to log actions to a file."""
-        """what is this"""
-        "huh"
-        'bruh'
         with open("course_stuff_log.txt", "a") as log_file:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             log_file.write(f"[{timestamp}] {message}\n")
@@ -36,12 +33,26 @@ class CoursesStorage:
     def get_all_courses(cls):
         return cls._courses_for_existence
 
-    # deletes a course (prob shouldn't need this)
+    # notify all users that this course has been added!! (and delete the course from storage since no need to check it anymore)
     @classmethod
-    def delete_course(cls, course_name):
+    async def notify_users(cls, course_name):
+        notification_tasks = []
+        all_users_for_course = CoursesStorage.get_course_users(course_name)
+        for user in all_users_for_course:  
+            task = asyncio.create_task(user.send(f"**Hey {user.name}, course {course_name} now exists in the schedule builder!**"))
+            notification_tasks.append(task)
+
+        # Wait for all notifications to be sent out
+        if notification_tasks:
+            await asyncio.gather(*notification_tasks)
+        # log everyone we notified
+        user_names = ", ".join([user.name for user in all_users_for_course])
+        cls._log_action(f"Notified {user_names} for course {course_name} (and deleted that course).")
+
+
         if course_name in cls._courses_for_existence:
             del cls._courses_for_existence[course_name]
-            cls._log_action(f"Deleted course: {course_name}.")
+            # cls._log_action(f"Deleted course: {course_name}.")
 
     # removes a user from a course
     @classmethod
