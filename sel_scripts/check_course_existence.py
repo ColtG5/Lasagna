@@ -1,6 +1,7 @@
 import time
 import asyncio
 import os
+from dotenv import load_dotenv
 import json
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -12,29 +13,30 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 class FindCourse:
-    def __init__(self, course, username, password) -> None:
+    def __init__(self, course) -> None:
         self.course = course
-        self.username = username
-        self.password = password
+        load_dotenv()
+        self._username = os.getenv("UCAL_USERNAME")
+        self._password = os.getenv("UCAL_PASSWORD")
 
-    def setup_method(self):
+    def _setup_method(self):
         options = Options()
-        # options.add_argument("--headless") # dont gotta show the chrome browser for production build
+        options.add_argument("--headless") # dont gotta show the chrome browser
 
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
 
-    def teardown_method(self):
+    def _teardown_method(self):
         self.driver.quit()
 
-    def wait_for_window(self, timeout=2):
+    def _wait_for_window(self, timeout=2):
         time.sleep(round(timeout / 1000))
         wh_now = self.driver.window_handles
         wh_then = self.vars["window_handles"]
         if len(wh_now) > len(wh_then):
             return set(wh_now).difference(set(wh_then)).pop()
 
-    def does_course_exist(self) -> bool:
+    def _does_course_exist(self) -> bool:
         self.driver.get(
             "https://cas.ucalgary.ca/cas/login?service=https://portal.my.ucalgary.ca/psp/paprd/?cmd=start&ca.ucalgary.authent.ucid=true"
         )
@@ -46,8 +48,8 @@ class FindCourse:
         )
 
         self.driver.set_window_size(1000, 1040)
-        self.driver.find_element(By.ID, "eidtext").send_keys(self.username)
-        self.driver.find_element(By.ID, "passwordtext").send_keys(self.password)
+        self.driver.find_element(By.ID, "eidtext").send_keys(self._username)
+        self.driver.find_element(By.ID, "passwordtext").send_keys(self._password)
         signin_button.click()
         self.vars["window_handles"] = self.driver.window_handles
 
@@ -57,7 +59,7 @@ class FindCourse:
             )
         ).click()
 
-        new_window = self.wait_for_window(2000)
+        new_window = self._wait_for_window(2000)
         if new_window:
             self.driver.switch_to.window(new_window)
 
@@ -92,10 +94,17 @@ class FindCourse:
             expected_conditions.presence_of_element_located((By.ID, "message_area"))
         )
 
-        if message_area.text == '"CPSC 599" is only available in the term 2024 Winter.':
+        # if message_area.text == '"CPSC 599" is only available in the term 2024 Winter.':
+        if "is only available in the term" in message_area.text:
             print(f"FOUND THE ERROR MESSAGE, {self.course} does not exist")
             return False
         else:
             print(f"no error message, {self.course} exists!!!!!!!!")
             return True
+        
+    def check_course_existence(self) -> bool:
+        self._setup_method()
+        course_exists = self._does_course_exist()
+        self._teardown_method()
+        return course_exists
 

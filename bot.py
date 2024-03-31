@@ -6,7 +6,8 @@ from discord.ext import commands
 import responses
 import bot_reminder
 import datetime
-import sel_scripts.sel_main as sel_main
+import sel_main
+from data.courses_storage import CoursesStorage
 
 def run_bot():
     load_dotenv()
@@ -14,6 +15,7 @@ def run_bot():
     # intents.message_content = True
     bot = commands.Bot(command_prefix="!L ", intents=discord.Intents.all())
     # bot.remove_command('help')
+
 
     @bot.event
     async def on_ready():
@@ -24,12 +26,14 @@ def run_bot():
         except Exception as e:
             print(e)
 
-        # bot.loop.create_task(sel_main.main_loop())
+        bot.loop.create_task(sel_main.main_loop(bot=bot))
+
 
     @bot.tree.command(name="hello")
     async def hello(interaction: discord.Interaction):
         # await interaction.response.send_message(f"Hello {interaction.user.nick}!", ephemeral=True)
         await interaction.response.send_message(f"Hello {interaction.user.nick}!")
+
 
     @bot.tree.command(name="say")
     @app_commands.describe(thing_to_say="What should I say?")
@@ -37,6 +41,7 @@ def run_bot():
         await interaction.response.send_message(
             f"{interaction.user.name} said: {thing_to_say}"
         )
+
 
     @bot.tree.command(
         name="new-daily-reminder", description="Create a new daily reminder!"
@@ -80,6 +85,7 @@ def run_bot():
             await interaction.response.send_message(f"{e}. Please try again.")
             return
 
+
     @bot.tree.command(name="list-reminders", description="List all reminders")
     async def list_reminders(interaction: discord.Interaction):
         reminders = bot_reminder.get_reminders()
@@ -92,6 +98,7 @@ def run_bot():
             reminder_str += f"{reminder.title} at {reminder.time.strftime('%I:%M %p')}\n"
 
         await interaction.response.send_message(reminder_str)
+
 
     @bot.tree.command(name="delete-reminder", description="Delete a reminder")
     @app_commands.describe(reminder_title="Which reminder should I delete?")
@@ -106,9 +113,26 @@ def run_bot():
         bot_reminder.delete_reminder(reminder)
         await interaction.response.send_message(f"Deleted reminder `{reminder_title}`.")
 
-    @bot.tree.command(name="check-courses", description="Check all courses for if they exist")
-    @app_commands.describe()
-    async def check_courses(interaction: discord.Interaction):
-        sel_main.main_loop(interaction)
+
+
+
+    @bot.tree.command(name="notify-of-course-existence", description="Get messaged by the bot when the course exists in schedule builder!")
+    @app_commands.describe(course_name="What course do you want to be notified of its existence for?")
+    async def add_course_existence_for_user(interaction: discord.Interaction, course_name: str):
+        if not course_name:
+            await interaction.response.send_message("Please provide a course.")
+            return
+        
+        name_is_valid = course_name.split(" ")[0].isalpha() and course_name.split(" ")[1].isnumeric() # need input to be "XXXX 000"
+
+        if not name_is_valid:
+            await interaction.response.send_message("Please provide a course in the format 'XXXX 599'.")
+            return
+
+        added = CoursesStorage.add_user_to_course(course_name.upper(), interaction.user.id)
+        if added:
+            await interaction.response.send_message(f"Okay, I'll notify you when {course_name} exists in the schedule builder!")
+        else:
+            await interaction.response.send_message(f"You are already on the list for {course_name}!") # i think this would happen if not added...
 
     bot.run(os.environ.get("TOKEN"))
