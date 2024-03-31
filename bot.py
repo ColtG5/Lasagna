@@ -120,16 +120,22 @@ def run_bot():
     @app_commands.describe(course_name="What course do you want to be notified of its existence for?")
     async def add_course_existence_for_user(interaction: discord.Interaction, course_name: str):
         if not course_name:
-            await interaction.response.send_message("Please provide a course.")
+            await interaction.response.send_message("Please provide a course")
             return
         
-        name_is_valid = course_name.split(" ")[0].isalpha() and course_name.split(" ")[1].isnumeric() # need input to be "XXXX 000"
+        try:
+            course_name = course_name.split(" ")[0].upper() + " " + course_name.split(" ")[1]
+        except:
+            name_is_valid = False
+        else:
+            name_is_valid = True
 
         if not name_is_valid:
-            await interaction.response.send_message("Please provide a course in the format 'XXXX 599'.")
+            await interaction.response.send_message("Please provide a course in the format \"AAAA 000\".")
             return
 
-        added = CoursesStorage.add_user_to_course(course_name.upper(), interaction.user.id)
+        added = CoursesStorage.add_user_to_course(course_name.upper(), interaction.user)
+        # added = CoursesStorage.add_user_to_course(course_name, interaction.user)
         if added:
             await interaction.response.send_message(f"Okay, I'll notify you when {course_name} exists in the schedule builder!")
         else:
