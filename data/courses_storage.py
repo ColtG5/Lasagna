@@ -1,7 +1,7 @@
 import datetime
 import asyncio
 
-class CoursesStorage:
+class CoursesExistenceStorage:
     _courses_for_existence = {}
 
     @classmethod
@@ -20,6 +20,7 @@ class CoursesStorage:
         if user not in cls._courses_for_existence[course_name]:
             cls._courses_for_existence[course_name].append(user)
             cls._log_action(f"Added user {user} to course {course_name}.")
+            cls.write_state_to_file() # maybe here?
             return True
         return False
 
@@ -37,7 +38,7 @@ class CoursesStorage:
     @classmethod
     async def notify_users(cls, course_name):
         notification_tasks = []
-        all_users_for_course = CoursesStorage.get_course_users(course_name)
+        all_users_for_course = cls.get_course_users(course_name)
         for user in all_users_for_course:  
             task = asyncio.create_task(user.send(f"**Hey {user.name}, course {course_name} now exists in the schedule builder!**"))
             notification_tasks.append(task)
@@ -53,6 +54,8 @@ class CoursesStorage:
         if course_name in cls._courses_for_existence:
             del cls._courses_for_existence[course_name]
             # cls._log_action(f"Deleted course: {course_name}.")
+        
+        cls.write_state_to_file()
 
     # removes a user from a course
     @classmethod
@@ -60,5 +63,24 @@ class CoursesStorage:
         if course_name in cls._courses_for_existence and user in cls._courses_for_existence[course_name]:
             cls._courses_for_existence[course_name].remove(user)
             cls._log_action(f"Removed user {user} from course {course_name}.")
+            cls.write_state_to_file()
             return True
         return False
+    
+    # write state of courses_for_existence to a file
+    @classmethod
+    def write_state_to_file(cls):
+        with open("courses_storage.txt", "w") as storage_file:
+            for course_name, users in cls._courses_for_existence.items():
+                user_data = [f"{user.name}|{user.id}" for user in users]
+                storage_file.write(f"{course_name}: {', '.join(user_data)}\n")
+
+    @classmethod
+    # load state of courses_for_existence from a file
+    async def load_state_from_file(cls, bot):
+        cls._courses_for_existence.clear()  # Clear existing data
+        with open("courses_storage.txt", "r") as storage_file:
+            for line in storage_file:
+                course_name, user_data_str = line.strip().split(": ")
+                user_ids = [user_str.split("|")[1] for user_str in user_data_str.split(", ")]
+                cls._courses_for_existence[course_name] = [await bot.fetch_user(int(user_id)) for user_id in user_ids]

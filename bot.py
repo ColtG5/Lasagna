@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import atexit
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -7,7 +8,15 @@ import responses
 import bot_reminder
 import datetime
 import sel_main
-from data.courses_storage import CoursesStorage
+from data.courses_storage import CoursesExistenceStorage
+
+def cleanup():
+    print("Saving state to file...")
+    CoursesExistenceStorage._log_action("Saving courses for existence state to file...\n")
+    CoursesExistenceStorage.write_state_to_file()
+    
+
+atexit.register(cleanup)
 
 def run_bot():
     load_dotenv()
@@ -26,8 +35,10 @@ def run_bot():
         except Exception as e:
             print(e)
 
+        await CoursesExistenceStorage.load_state_from_file(bot=bot)
+        CoursesExistenceStorage._log_action("Loading state of courses for existence from file...")
+        print("\nLoaded state of courses from file!")
         bot.loop.create_task(sel_main.main_loop(bot=bot))
-
 
     # @bot.tree.command(name="hello")
     # async def hello(interaction: discord.Interaction):
@@ -134,10 +145,10 @@ def run_bot():
             await interaction.response.send_message("Please provide a course in the format \"AAAA 000\".")
             return
 
-        added = CoursesStorage.add_user_to_course(course_name.upper(), interaction.user)
+        added = CoursesExistenceStorage.add_user_to_course(course_name.upper(), interaction.user)
         # added = CoursesStorage.add_user_to_course(course_name, interaction.user)
         if added:
-            await interaction.response.send_message(f"Okay, I'll notify you when {course_name} exists in the schedule builder!")
+            await interaction.response.send_message(f"Okay, I'll dm you when {course_name} exists in the schedule builder!")
         else:
             await interaction.response.send_message(f"You are already on the list for {course_name}!") # i think this would happen if not added...
 

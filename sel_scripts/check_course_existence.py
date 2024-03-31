@@ -22,6 +22,7 @@ class FindCourse:
     def _setup_method(self):
         options = Options()
         options.add_argument("--headless") # dont gotta show the chrome browser
+        options.add_argument("--log-level=3")
 
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
@@ -96,10 +97,10 @@ class FindCourse:
 
         # if message_area.text == '"CPSC 599" is only available in the term 2024 Winter.':
         if "is only available in the term" in message_area.text:
-            print(f"FOUND THE ERROR MESSAGE, {self.course} does not exist")
+            # print(f"FOUND THE ERROR MESSAGE, {self.course} does not exist")
             return False
         else:
-            print(f"no error message, {self.course} exists!!!!!!!!")
+            # print(f"no error message, {self.course} exists!!!!!!!!")
             return True
         
     def check_course_existence(self) -> bool:
