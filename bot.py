@@ -24,7 +24,7 @@ def run_bot():
         except Exception as e:
             print(e)
 
-        bot.loop.create_task(sel_main.main_loop())
+        # bot.loop.create_task(sel_main.main_loop())
 
     @bot.tree.command(name="hello")
     async def hello(interaction: discord.Interaction):
@@ -80,17 +80,35 @@ def run_bot():
             await interaction.response.send_message(f"{e}. Please try again.")
             return
 
-    # @bot.event
-    # async def on_message(message):
-    #     if message.author == bot.user or str(message.content)[:3] != "!L ":
-    #         return
+    @bot.tree.command(name="list-reminders", description="List all reminders")
+    async def list_reminders(interaction: discord.Interaction):
+        reminders = bot_reminder.get_reminders()
+        if not reminders:
+            await interaction.response.send_message("No reminders set.")
+            return
 
-    #     user_message = str(message.content[3:])
-    #     print(f"{message.author}: {user_message} ({message.channel} in {message.guild})")
+        reminder_str = ""
+        for reminder in reminders:
+            reminder_str += f"{reminder.title} at {reminder.time.strftime('%I:%M %p')}\n"
 
-    #     for i in dir(bot_responses):
-    #         function = getattr(bot_responses, i)
-    #         if i.startswith('f_') and callable(function):
-    #             await function(bot, message, user_message)
+        await interaction.response.send_message(reminder_str)
+
+    @bot.tree.command(name="delete-reminder", description="Delete a reminder")
+    @app_commands.describe(reminder_title="Which reminder should I delete?")
+    async def delete_reminder(interaction: discord.Interaction, reminder_title: str):
+        reminder = bot_reminder.get_reminder(reminder_title)
+        if not reminder:
+            await interaction.response.send_message(
+                f"No reminder with title `{reminder_title}` found."
+            )
+            return
+
+        bot_reminder.delete_reminder(reminder)
+        await interaction.response.send_message(f"Deleted reminder `{reminder_title}`.")
+
+    @bot.tree.command(name="check-courses", description="Check all courses for if they exist")
+    @app_commands.describe()
+    async def check_courses(interaction: discord.Interaction):
+        sel_main.main_loop(interaction)
 
     bot.run(os.environ.get("TOKEN"))
