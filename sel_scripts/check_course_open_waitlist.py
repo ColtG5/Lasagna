@@ -20,7 +20,7 @@ class FindOpenWaitlist:
         self._username = os.getenv("UCAL_USERNAME")
         self._password = os.getenv("UCAL_PASSWORD")
 
-    def setup_method(self):
+    def _setup_method(self):
         options = Options()
         options.add_argument("--headless") # dont gotta show the chrome browser
         options.add_argument("--log-level=3")
@@ -29,10 +29,10 @@ class FindOpenWaitlist:
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
 
-    def teardown_method(self):
+    def _teardown_method(self):
         self.driver.quit()
 
-    def wait_for_window(self, timeout=2):
+    def _wait_for_window(self, timeout=2):
         time.sleep(round(timeout / 1000))
         wh_now = self.driver.window_handles
         wh_then = self.vars["window_handles"]
@@ -64,7 +64,7 @@ class FindOpenWaitlist:
             )
         ).click()
 
-        new_window = self.wait_for_window(2000)
+        new_window = self._wait_for_window(2000)
         if new_window:
             self.driver.switch_to.window(new_window)
 
@@ -138,7 +138,7 @@ class FindOpenWaitlist:
         return False
 
     def check_course(self) -> bool:
-        self.setup_method()
+        self._setup_method()
         course_exists = self._is_waitlist_open()
-        self.teardown_method()
+        self._teardown_method()
         return course_exists
