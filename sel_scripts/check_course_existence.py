@@ -13,8 +13,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 class FindCourse:
-    def __init__(self, course) -> None:
+    def __init__(self, course, semester) -> None:
         self.course = course
+        self.semester = semester
         load_dotenv()
         self._username = os.getenv("UCAL_USERNAME")
         self._password = os.getenv("UCAL_PASSWORD")
@@ -73,7 +74,7 @@ class FindCourse:
         ).click()
 
         WebDriverWait(self.driver, 10).until(
-            expected_conditions.presence_of_element_located((By.LINK_TEXT, "2024 Fall"))
+            expected_conditions.presence_of_element_located((By.LINK_TEXT, self.semester))
         ).click()
 
         time.sleep(5) # more stupid loading anims

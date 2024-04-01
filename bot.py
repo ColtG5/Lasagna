@@ -128,8 +128,8 @@ def run_bot():
 
 
     @bot.tree.command(name="notify-of-course-existence", description="Get messaged by the bot when the course exists in schedule builder!")
-    @app_commands.describe(course_name="What course do you want to be notified of its existence for?")
-    async def add_course_existence_for_user(interaction: discord.Interaction, course_name: str):
+    @app_commands.describe(course_name="What course do you want to be notified of its existence for?", semester="What semester is this course in? Please choose either P24, S24, F24, or W25")
+    async def add_course_existence_for_user(interaction: discord.Interaction, course_name: str, semester: str):
         if not course_name:
             await interaction.response.send_message("Please provide a course")
             return
@@ -144,9 +144,20 @@ def run_bot():
         if not name_is_valid:
             await interaction.response.send_message("Please provide a course in the format \"AAAA 000\".")
             return
+        
+        semesters_map = {
+            "P24": "2024 Spring",
+            "S24": "2024 Summer",
+            "F24": "2024 Fall",
+            "W25": "2025 Winter",
+        }
+        if semester not in semesters_map:
+            await interaction.response.send_message("Please provide a valid semester: P24, S24, F24, or W25.")
+            return
+        
+        course_info = (course_name.upper(), semesters_map[semester])
 
-        added = CoursesExistenceStorage.add_user_to_course(course_name.upper(), interaction.user)
-        # added = CoursesStorage.add_user_to_course(course_name, interaction.user)
+        added = CoursesExistenceStorage.add_user_to_course(course_info, interaction.user)
         if added:
             await interaction.response.send_message(f"Okay, I'll dm you when {course_name} exists in the schedule builder!")
         else:

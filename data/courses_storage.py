@@ -1,8 +1,14 @@
 import datetime
+import discord
 import asyncio
+from typing import Dict, List, Tuple
 
 class CoursesExistenceStorage:
-    _courses_for_existence = {}
+    # {
+    #   ("AAAA 000", "2024 Fall"): [user1, user2, user3],
+    #   ("AAAA 001", "2025 Winter"): [user4, user5, user2],
+    # }
+    _courses_for_existence: Dict[Tuple[str, str], List[discord.User]] = {}
 
     @classmethod
     def _log_action(cls, message):
@@ -12,57 +18,46 @@ class CoursesExistenceStorage:
 
     # adds a user to a course. creates course if course does not exist
     @classmethod
-    def add_user_to_course(cls, course_name, user) -> bool:
-        if course_name not in cls._courses_for_existence:
-            cls._courses_for_existence[course_name] = []
-            cls._log_action(f"Created new course: {course_name}.")
+    def add_user_to_course(cls, course_info: Tuple[str, str], user: discord.User) -> bool:
+        if course_info not in cls._courses_for_existence:
+            cls._courses_for_existence[course_info] = []
+            cls._log_action(f"Created new course: {course_info[0]}.")
         
-        if user not in cls._courses_for_existence[course_name]:
-            cls._courses_for_existence[course_name].append(user)
-            cls._log_action(f"Added user {user} to course {course_name}.")
-            cls.write_state_to_file() # maybe here?
+        if user not in cls._courses_for_existence[course_info]:
+            cls._courses_for_existence[course_info].append(user)
+            cls._log_action(f"Added user {user} to course {course_info[0]}.")
+            cls.write_state_to_file()
             return True
         return False
 
-    # gets all users for a course
-    @classmethod
-    def get_course_users(cls, course_name):
-        return cls._courses_for_existence.get(course_name, [])
+    # # gets all users for a course
+    # @classmethod
+    # def get_course_users(cls, course_info: Tuple[str, str]):
+    #     return cls._courses_for_existence.get(course_info, [])
 
     # gets all courses
     @classmethod
-    def get_all_courses(cls):
+    def get_all_course_infos(cls):
         return cls._courses_for_existence
 
     # notify all users that this course has been added!! (and delete the course from storage since no need to check it anymore)
     @classmethod
-    async def notify_users(cls, course_name):
-        notification_tasks = []
-        all_users_for_course = cls.get_course_users(course_name)
-        for user in all_users_for_course:  
-            task = asyncio.create_task(user.send(f"**Hey {user.name}, course {course_name} now exists in the schedule builder!**"))
-            notification_tasks.append(task)
-
-        # Wait for all notifications to be sent out
-        if notification_tasks:
+    async def notify_users(cls, course_info: Tuple[str, str]):
+        if course_info in cls._courses_for_existence:
+            users = cls._courses_for_existence[course_info]
+            notification_tasks = [asyncio.create_task(user.send(f"**Hey {user.name}, {course_info[0]} for {course_info[1]} now exists in the schedule builder!**")) for user in users]
             await asyncio.gather(*notification_tasks)
-        # log everyone we notified
-        user_names = ", ".join([user.name for user in all_users_for_course])
-        cls._log_action(f"Notified {user_names} for course {course_name} (and deleted that course).")
-
-
-        if course_name in cls._courses_for_existence:
-            del cls._courses_for_existence[course_name]
-            # cls._log_action(f"Deleted course: {course_name}.")
-        
-        cls.write_state_to_file()
+            user_names = ", ".join(user.name for user in users)
+            cls._log_action(f"Notified {user_names} for course {course_info}.")
+            del cls._courses_for_existence[course_info]
+            cls.write_state_to_file()
 
     # removes a user from a course
     @classmethod
-    def remove_user_from_course(cls, course_name, user) -> True:
-        if course_name in cls._courses_for_existence and user in cls._courses_for_existence[course_name]:
-            cls._courses_for_existence[course_name].remove(user)
-            cls._log_action(f"Removed user {user} from course {course_name}.")
+    def remove_user_from_course(cls, course_info: Tuple[str, str], user: discord.User) -> bool:
+        if course_info in cls._courses_for_existence and user in cls._courses_for_existence[course_info]:
+            cls._courses_for_existence[course_info].remove(user)
+            cls._log_action(f"Removed user {user.name} from course {course_info}.")
             cls.write_state_to_file()
             return True
         return False
@@ -71,16 +66,26 @@ class CoursesExistenceStorage:
     @classmethod
     def write_state_to_file(cls):
         with open("courses_storage.txt", "w") as storage_file:
-            for course_name, users in cls._courses_for_existence.items():
-                user_data = [f"{user.name}|{user.id}" for user in users]
-                storage_file.write(f"{course_name}: {', '.join(user_data)}\n")
+            for (class_name, semester), users in cls._courses_for_existence.items():
+                user_data = [f"{user.name} | {user.id}" for user in users]
+                course_info_str = f"{class_name}, {semester}"  # Serialize tuple as string
+                storage_file.write(f"({course_info_str}) : {', '.join(user_data)}\n")
 
-    @classmethod
     # load state of courses_for_existence from a file
+    @classmethod
     async def load_state_from_file(cls, bot):
-        cls._courses_for_existence.clear()  # Clear existing data
+        cls._courses_for_existence.clear()  # clear existing data if there is any
         with open("courses_storage.txt", "r") as storage_file:
             for line in storage_file:
-                course_name, user_data_str = line.strip().split(": ")
-                user_ids = [user_str.split("|")[1] for user_str in user_data_str.split(", ")]
-                cls._courses_for_existence[course_name] = [await bot.fetch_user(int(user_id)) for user_id in user_ids]
+                if not line.strip():
+                    continue
+
+                line_cleaned = line.strip()[1:] # remove leading '('
+                course_info_str, user_data_str = line_cleaned.split(") : ") # inherently remove trailing ')' during split
+                
+                class_name, semester = [info.strip() for info in course_info_str.split(", ")]
+                
+                user_ids = [user_str.split(" | ")[1].strip() for user_str in user_data_str.split(", ")]
+                
+                users = await asyncio.gather(*[bot.fetch_user(int(user_id)) for user_id in user_ids])
+                cls._courses_for_existence[(class_name, semester)] = users
