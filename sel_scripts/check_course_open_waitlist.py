@@ -12,7 +12,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-class FindCourseExistence:
+class FindOpenWaitlist:
     def __init__(self, course, semester) -> None:
         self.course = course
         self.semester = semester
@@ -20,25 +20,26 @@ class FindCourseExistence:
         self._username = os.getenv("UCAL_USERNAME")
         self._password = os.getenv("UCAL_PASSWORD")
 
-    def _setup_method(self):
+    def setup_method(self):
         options = Options()
         options.add_argument("--headless") # dont gotta show the chrome browser
         options.add_argument("--log-level=3")
+        options.add_argument("--start-maximized")
 
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
 
-    def _teardown_method(self):
+    def teardown_method(self):
         self.driver.quit()
 
-    def _wait_for_window(self, timeout=2):
+    def wait_for_window(self, timeout=2):
         time.sleep(round(timeout / 1000))
         wh_now = self.driver.window_handles
         wh_then = self.vars["window_handles"]
         if len(wh_now) > len(wh_then):
             return set(wh_now).difference(set(wh_then)).pop()
 
-    def _does_course_exist(self) -> bool:
+    def _is_waitlist_open(self) -> bool:
         self.driver.get(
             "https://cas.ucalgary.ca/cas/login?service=https://portal.my.ucalgary.ca/psp/paprd/?cmd=start&ca.ucalgary.authent.ucid=true"
         )
@@ -49,10 +50,12 @@ class FindCourseExistence:
             )
         )
 
-        self.driver.set_window_size(1000, 1040)
+        # self.driver.set_window_size(1800, 1040)
+        # self.driver.fullscreen_window()
         self.driver.find_element(By.ID, "eidtext").send_keys(self._username)
         self.driver.find_element(By.ID, "passwordtext").send_keys(self._password)
         signin_button.click()
+
         self.vars["window_handles"] = self.driver.window_handles
 
         WebDriverWait(self.driver, 10).until(
@@ -61,12 +64,13 @@ class FindCourseExistence:
             )
         ).click()
 
-        new_window = self._wait_for_window(2000)
+        new_window = self.wait_for_window(2000)
         if new_window:
             self.driver.switch_to.window(new_window)
 
-        time.sleep(5) # for stupid loading animations
-        
+        # This is needed because of some stupid loading animation
+        time.sleep(5)
+
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located(
                 (By.CSS_SELECTOR, ".welcome_cont_but > .big_button")
@@ -77,7 +81,8 @@ class FindCourseExistence:
             expected_conditions.presence_of_element_located((By.LINK_TEXT, self.semester))
         ).click()
 
-        time.sleep(5) # more stupid loading anims
+        # This is needed because of other stupid loading animation
+        time.sleep(5)
 
         self.driver.execute_script("window.scrollTo(0,0)")
 
@@ -90,23 +95,50 @@ class FindCourseExistence:
         course_search.send_keys(self.course)
         course_search.send_keys(Keys.ENTER)
 
-        time.sleep(1) # wait just a little for error message to load
+        # Need to wait for the message to load
+        time.sleep(1)
 
-        message_area = WebDriverWait(self.driver, 10).until(
-            expected_conditions.presence_of_element_located((By.ID, "message_area"))
-        )
+        course_exists = False
+        try:
+            WebDriverWait(self.driver, 10).until(
+                expected_conditions.presence_of_element_located((By.CLASS_NAME, "warningNoteBad"))
+            )
+        except Exception:
+            course_exists = True
 
-        # if message_area.text == '"CPSC 599" is only available in the term 2024 Winter.':
-        if "is only available in the term" in message_area.text:
-            # print(f"FOUND THE ERROR MESSAGE, {self.course} does not exist")
-            return False
-        else:
-            # print(f"no error message, {self.course} exists!!!!!!!!")
-            return True
-        
+        if course_exists:
+            course_boxes = self.driver.find_elements(By.CLASS_NAME, "course_box")
+
+            for cool_course in course_boxes:
+                if self.course in cool_course.text:
+                    # Check seats for the class
+                    # need a better way to check these separately
+                    try:
+                        seat_count = cool_course.find_element(By.CLASS_NAME, "seatText")
+                        if "Full" not in seat_count.text:
+                            print("class has open seats")
+                            return True
+                    except Exception:
+                        try:
+                            waitlist_count = cool_course.find_element(
+                                By.CLASS_NAME, "waitText"
+                            )
+
+                            if (
+                                "Full" not in waitlist_count.text
+                                or "None" not in waitlist_count.text
+                            ):
+                                print("Class has open waitlist")
+                                return True
+                        except Exception:
+                            print("Class is full!!")
+                            return False
+
+        print("Class doesn't exist or you are already enrolled")
+        return False
+
     def check_course(self) -> bool:
-        self._setup_method()
-        course_exists = self._does_course_exist()
-        self._teardown_method()
+        self.setup_method()
+        course_exists = self._is_waitlist_open()
+        self.teardown_method()
         return course_exists
-

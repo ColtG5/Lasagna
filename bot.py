@@ -8,12 +8,12 @@ import responses
 import bot_reminder
 import datetime
 import sel_main
-from data.courses_storage import CoursesExistenceStorage
+from data.courses_storage import CoursesStorage
 
 def cleanup():
     print("Saving state to file...")
-    CoursesExistenceStorage._log_action("Saving courses for existence state to file...\n")
-    CoursesExistenceStorage.write_state_to_file()
+    CoursesStorage._log_action("Saving courses for existence state to file...\n")
+    CoursesStorage.write_state_to_file()
     
 
 atexit.register(cleanup)
@@ -35,8 +35,8 @@ def run_bot():
         except Exception as e:
             print(e)
 
-        await CoursesExistenceStorage.load_state_from_file(bot=bot)
-        CoursesExistenceStorage._log_action("Loading state of courses for existence from file...")
+        await CoursesStorage.load_state_from_file(bot=bot)
+        CoursesStorage._log_action("Loading state of courses for existence from file...")
         print("\nLoaded state of courses from file!")
         bot.loop.create_task(sel_main.main_loop(bot=bot))
 
@@ -124,23 +124,17 @@ def run_bot():
     #     bot_reminder.delete_reminder(reminder)
     #     await interaction.response.send_message(f"Deleted reminder `{reminder_title}`.")
 
-
-
-
-    @bot.tree.command(name="notify-of-course-existence", description="Get messaged by the bot when the course exists in schedule builder!")
-    @app_commands.describe(course_name="What course do you want to be notified of its existence for?", semester="What semester is this course in? Please choose either P24, S24, F24, or W25")
-    async def add_course_existence_for_user(interaction: discord.Interaction, course_name: str, semester: str):
+    async def _add_user_to_course_notification(interaction: discord.Interaction, course_name: str, semester: str, notification_type: str):
         if not course_name:
-            await interaction.response.send_message("Please provide a course")
+            await interaction.response.send_message("Please provide a course.")
             return
         
         try:
-            course_name = course_name.split(" ")[0].upper() + " " + course_name.split(" ")[1]
-        except:
-            name_is_valid = False
-        else:
+            formatted_course_name = course_name.split(" ")[0].upper() + " " + course_name.split(" ")[1]
             name_is_valid = True
-
+        except IndexError:
+            name_is_valid = False
+        
         if not name_is_valid:
             await interaction.response.send_message("Please provide a course in the format \"AAAA 000\".")
             return
@@ -151,16 +145,31 @@ def run_bot():
             "F24": "2024 Fall",
             "W25": "2025 Winter",
         }
+        
         if semester not in semesters_map:
             await interaction.response.send_message("Please provide a valid semester: P24, S24, F24, or W25.")
             return
         
-        course_info = (course_name.upper(), semesters_map[semester])
+        course_info = (formatted_course_name, semesters_map[semester], notification_type)
 
-        added = CoursesExistenceStorage.add_user_to_course(course_info, interaction.user)
+        added = CoursesStorage.add_user_to_course(course_info, interaction.user)
         if added:
-            await interaction.response.send_message(f"Okay, I'll dm you when {course_name} exists in the schedule builder!")
+            if notification_type == "Existence":
+                await interaction.response.send_message(f"Okay, I'll dm you when {formatted_course_name} exists in {semesters_map[semester]}!")
+            if notification_type == "Open Waitlist":
+                await interaction.response.send_message(f"Okay, I'll dm you when {formatted_course_name} has an open waitlist in {semesters_map[semester]}!")
         else:
-            await interaction.response.send_message(f"You are already on the list for {course_name}!") # i think this would happen if not added...
+            await interaction.response.send_message(f"You are already on the list for {formatted_course_name}!")
+
+
+    @bot.tree.command(name="notify-of-course-existence", description="Get messaged by the bot when the course exists in schedule builder!")
+    @app_commands.describe(course_name="What course do you want to be notified of its existence for?", semester="What semester is this course in? Please choose either P24, S24, F24, or W25")
+    async def add_course_existence_for_user(interaction: discord.Interaction, course_name: str, semester: str):
+        await _add_user_to_course_notification(interaction, course_name, semester, "Existence")
+
+    @bot.tree.command(name="notify-of-open-waitlist", description="Get messaged by the bot when the course has an open waitlist!")
+    @app_commands.describe(course_name="What course do you want to be notified of its open waitlist for?", semester="What semester is this course in? Please choose either P24, S24, F24, or W25")
+    async def add_course_waitlist_for_user(interaction: discord.Interaction, course_name: str, semester: str):
+        await _add_user_to_course_notification(interaction, course_name, semester, "Open Waitlist")
 
     bot.run(os.environ.get("TOKEN"))
